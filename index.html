@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>meteo-carrier — PCB Design Brief</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --ink: #1c2733; --muted: #5b6b7b; --line: #d5dde6;
+    --paper: #ffffff; --wash: #f4f7fa;
+    --blue: #1d5fbf; --blue-wash: #e9f1fb;
+    --amber: #8a5a00; --amber-wash: #fdf3df;
+    --green: #1e6b40; --green-wash: #e8f5ec;
+    --red: #a03030; --red-wash: #fbecec;
+  }
+  html { background: var(--wash); }
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    color: var(--ink); background: var(--wash);
+    line-height: 1.55; font-size: 15px;
+  }
+  .page { max-width: 940px; margin: 0 auto; padding: 32px 36px 64px;
+          background: var(--paper); min-height: 100vh; }
+  h1 { font-size: 1.7rem; letter-spacing: -0.01em; }
+  .subtitle { color: var(--muted); margin: 6px 0 4px; }
+  .meta { color: var(--muted); font-size: 0.85rem; border-bottom: 2px solid var(--ink);
+          padding-bottom: 14px; margin-bottom: 22px; }
+  h2 { font-size: 1.18rem; margin: 34px 0 10px; padding-top: 10px;
+       border-top: 1px solid var(--line); }
+  h2 .num { color: var(--blue); font-variant-numeric: tabular-nums; margin-right: 6px; }
+  h3 { font-size: 1rem; margin: 18px 0 6px; }
+  p { margin: 8px 0; }
+  ul, ol { margin: 8px 0 8px 22px; }
+  li { margin: 4px 0; }
+  code, .mono { font-family: Consolas, "Cascadia Mono", monospace; font-size: 0.88em;
+         background: var(--wash); padding: 0 4px; border-radius: 3px; }
+  table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 0.9rem; }
+  th, td { border: 1px solid var(--line); padding: 5px 8px; text-align: left;
+           vertical-align: top; }
+  th { background: var(--wash); font-weight: 600; }
+  td code { background: none; padding: 0; }
+  .callout { border-left: 4px solid var(--blue); background: var(--blue-wash);
+             padding: 10px 14px; margin: 12px 0; border-radius: 0 6px 6px 0; }
+  .callout.warn { border-color: var(--red); background: var(--red-wash); }
+  .callout.note { border-color: var(--amber); background: var(--amber-wash); }
+  .callout strong:first-child { display: inline-block; }
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 0.85rem;
+            color: var(--muted); margin: 6px 0 0; }
+  .legend span::before { content: ""; display: inline-block; width: 11px; height: 11px;
+            border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+  .legend .l-off::before { background: var(--amber-wash); border: 1.5px solid var(--amber); }
+  .legend .l-board::before { background: var(--blue-wash); border: 1.5px solid var(--blue); }
+  .legend .l-mod::before { background: var(--green-wash); border: 1.5px solid var(--green); }
+  figure { margin: 14px 0; }
+  figure svg { width: 100%; height: auto; display: block; background: #fdfefe;
+               border: 1px solid var(--line); border-radius: 8px; }
+  figcaption { font-size: 0.85rem; color: var(--muted); margin-top: 6px; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 0 26px; }
+  @media (max-width: 720px) { .two-col { grid-template-columns: 1fr; } }
+  .checklist li { list-style: none; position: relative; padding-left: 4px; }
+  .checklist li::before { content: "☐"; position: absolute; left: -20px; color: var(--blue); }
+  @media print {
+    html, body { background: #fff; }
+    .page { max-width: none; padding: 0; }
+    h2 { break-after: avoid; }
+    table, figure, .callout { break-inside: avoid; }
+    a { color: inherit; text-decoration: none; }
+    @page { margin: 16mm; }
+  }
+
+  /* cross-plug matrix — severity built on the brief's own tokens */
+  .matrix-scroll { overflow-x: auto; margin: 10px 0; }
+  table.xmatrix { min-width: 730px; font-size: 0.82rem; }
+  table.xmatrix th[scope="row"] { white-space: nowrap; background: var(--wash); }
+  table.xmatrix th .sz { display: block; font-weight: 400; font-size: 0.9em;
+        color: var(--muted); font-family: Consolas, "Cascadia Mono", monospace; }
+  td.x-none { background: var(--wash); }
+  td.x-open { background: var(--green-wash); }
+  td.x-pass { background: var(--blue-wash); }
+  td.x-dmg  { background: var(--red-wash); }
+  .vd { display: block; font-weight: 600; font-size: 0.78rem; letter-spacing: 0.05em;
+        text-transform: uppercase; }
+  td.x-none .vd { color: var(--muted); }
+  td.x-open .vd { color: var(--green); }
+  td.x-pass .vd { color: var(--blue); }
+  td.x-dmg  .vd { color: var(--red); }
+  td.x-self .vd { color: var(--muted); }
+  .vw { display: block; font-size: 0.8rem; color: var(--muted); margin-top: 2px; }
+  .sev-legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 0.85rem;
+        color: var(--muted); margin: 8px 0; }
+  .sev-legend span::before { content: ""; display: inline-block; width: 11px; height: 11px;
+        border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+  .sev-legend .k-none::before { background: var(--wash);       border: 1.5px solid var(--muted); }
+  .sev-legend .k-open::before { background: var(--green-wash); border: 1.5px solid var(--green); }
+  .sev-legend .k-pass::before { background: var(--blue-wash);  border: 1.5px solid var(--blue); }
+  .sev-legend .k-dmg::before  { background: var(--red-wash);   border: 1.5px solid var(--red); }
+  /* the four-document menu — absolute URLs, because each page is served
+     from its own origin once published */
+  .docnav { display: flex; flex-wrap: wrap; gap: 4px 20px; align-items: baseline;
+            font-family: Consolas, "Cascadia Mono", monospace; font-size: 12px;
+            padding-bottom: 12px; border-bottom: 1px solid var(--line);
+            margin-bottom: 22px; }
+  .docnav a { color: var(--muted); text-decoration: none;
+              border-bottom: 1px solid transparent; padding-bottom: 2px; }
+  .docnav a:hover, .docnav a:focus-visible { color: var(--blue);
+              border-bottom-color: var(--blue); }
+  .docnav [aria-current="page"] { color: var(--ink); font-weight: 600;
+              border-bottom: 2px solid var(--blue); padding-bottom: 1px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<nav class="docnav" aria-label="Project documents">
+  <a href="https://ildarcheg.github.io/buoy-parts-book/">Parts Book</a>
+  <span aria-current="page">Carrier Brief</span>
+  <a href="https://ildarcheg.github.io/battery-pack-wiring/">Battery Pack</a>
+  <a href="https://ildarcheg.github.io/thermal-probe-wiring/">Thermal Probe</a>
+</nav>
+
+<h1>meteo-carrier — PCB design brief</h1>
+<p class="subtitle">One board that connects an ESP32 module to its sensors, its
+satellite modem, and an <em>off-board</em> solar + battery power system.</p>
+<p class="meta">Prepared 2026-08-17, revised 2026-09-08 · for the PCB designer · condensed from the
+project's carrier specs (<span class="mono">2026-08-09-meteo-carrier-pcb-design.md</span>
+= the electrical contract, <span class="mono">2026-08-15-carrier-pcb-order-and-proto-design.md</span>
+= the realization). Where this page and those specs disagree, the specs win.</p>
+
+<h2><span class="num">1</span>What this device is, in 60 seconds</h2>
+<p>An autonomous weather probe sealed inside a Ø200&nbsp;mm floating sphere.
+It sleeps almost all the time on a battery, wakes hourly to read sensors, and a
+few times a day powers a satellite modem to transmit. Because it sleeps for
+months, the electrical design is dominated by one number: the <strong>always-on
+rail must idle in single-digit microamps</strong>. Everything hungry (GPS,
+modem) sits behind its own power switch.</p>
+<p>Three copies of the board fly in probes that can never be serviced again;
+two more serve the bench. So: <strong>five identical boards</strong>, boring
+and reworkable beats clever and dense.</p>
+
+<h2><span class="num">2</span>The key idea: power generation lives OFF the board</h2>
+<p>This is the part that most needs saying up front. The solar panels, the
+battery pack, and the charger are <strong>three separate physical assemblies
+that never touch the PCB you are designing</strong>:</p>
+<ol>
+  <li><strong>Solar array</strong> — 3 small panels (Voltaic P123, 6&nbsp;V class,
+      0.64&nbsp;W each) mounted in the hull's crown. They are OR-ed through one
+      Schottky diode each on a little <em>combiner</em> perfboard next to the
+      panels. One two-wire cable comes down from it.</li>
+  <li><strong>Battery pack</strong> — 6 × 18650 Li-ion cells (~21&nbsp;Ah) lying
+      in bays printed straight into the battery platform, low in the hull, with
+      <strong>two</strong> 10&nbsp;kΩ NTC thermistors at the pack: one for the
+      charger's TS pin, one for your board. They are separate parts on purpose
+      — see the note in §5.</li>
+  <li><strong>Charger board</strong> — an off-the-shelf Adafruit <strong>bq25185</strong>
+      breakout (#6106), mounted on standoffs next to the carrier. The solar
+      cable and the battery leads both land <em>here</em>. It charges the pack
+      (its own TS pin + its own pack NTC blocks charging below 0&nbsp;°C in
+      hardware) and provides the power path. It also carries a 5&nbsp;V boost,
+      which this design <strong>does not use</strong>: its enable pad is tied
+      to GND at the charger so the unused stage cannot come up.</li>
+</ol>
+<div class="callout">
+<strong>The whole power interface to your board is battery voltage and ground
+— two conductors:</strong> <code>BATT+ · GND</code>. That is all. The
+5&nbsp;V and EN conductors this brief used to specify were deleted in September
+when the modem moved onto the battery rail. No solar wiring, no cell wiring, no
+charge current ever crosses the PCB. (Corollary: do <em>not</em> add solar
+terminals or OR-ing diodes to the board — an earlier revision had them and they
+were deliberately deleted; a second series diode would cost the array real
+voltage.)
+</div>
+<div class="callout note">
+<strong>The charger is the bq25185 (#6106)</strong>, chosen 8&nbsp;September.
+One bench measurement could still send it back to the owned bq24074 — if the
+#6106 does not idle in microamps. Either board presents the same two conductors,
+which is why the charger connects by <em>cable to a connector</em> rather than
+by a footprint. Keep the board charger-agnostic; nothing about the layout turns
+on which one is fitted.
+</div>
+
+<h2><span class="num">3</span>The system at a glance</h2>
+<figure>
+<svg viewBox="0 0 900 560" role="img" aria-label="Block diagram: off-board power chain feeding the carrier PCB and its modules">
+  <defs>
+    <marker id="arr" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0 L8 4 L0 8 z" fill="#3a4a5a"/>
+    </marker>
+  </defs>
+  <style>
+    .box   { rx: 8; }
+    .off   { fill: #fdf3df; stroke: #8a5a00; stroke-width: 1.6; }
+    .brd   { fill: #e9f1fb; stroke: #1d5fbf; stroke-width: 2; }
+    .mod   { fill: #e8f5ec; stroke: #1e6b40; stroke-width: 1.6; }
+    .zone  { fill: none; stroke: #b9c5d1; stroke-width: 1.2; stroke-dasharray: 6 5; rx: 12; }
+    .t     { font: 600 14px "Segoe UI", system-ui, sans-serif; fill: #1c2733; }
+    .s     { font: 12px "Segoe UI", system-ui, sans-serif; fill: #45566a; }
+    .zl    { font: 700 11.5px "Segoe UI", system-ui, sans-serif; fill: #7c8b9a; letter-spacing: .08em; }
+    .w     { stroke: #3a4a5a; stroke-width: 1.6; fill: none; marker-end: url(#arr); }
+    .wl    { font: 600 11.5px Consolas, monospace; fill: #1d5fbf; }
+    .wl2   { font: 600 11.5px Consolas, monospace; fill: #8a5a00; }
+  </style>
+
+  <!-- OFF-BOARD zone -->
+  <rect class="zone" x="14" y="14" width="330" height="532"/>
+  <text class="zl" x="26" y="36">OFF-BOARD (NOT YOUR PCB)</text>
+
+  <rect class="box off" x="30" y="52" width="140" height="66" rx="8"/>
+  <text class="t" x="42" y="76">3× solar panels</text>
+  <text class="s" x="42" y="94">P123 · 6 V · 0.64 W</text>
+  <text class="s" x="42" y="109">in the hull crown</text>
+
+  <rect class="box off" x="200" y="52" width="128" height="66" rx="8"/>
+  <text class="t" x="212" y="76">combiner</text>
+  <text class="s" x="212" y="94">3× Schottky OR</text>
+  <text class="s" x="212" y="109">perfboard</text>
+  <path class="w" d="M170 85 H196"/>
+
+  <rect class="box off" x="30" y="196" width="140" height="84" rx="8"/>
+  <text class="t" x="42" y="220">battery pack</text>
+  <text class="s" x="42" y="238">6× 18650 (~21 Ah)</text>
+  <text class="s" x="42" y="253">+ 2× 10 kΩ NTC</text>
+  <text class="s" x="42" y="268">(TS pin + carrier)</text>
+
+  <rect class="box off" x="200" y="160" width="128" height="150" rx="8"/>
+  <text class="t" x="212" y="184">charger board</text>
+  <text class="s" x="212" y="202">bq25185 (#6106)</text>
+  <text class="s" x="212" y="217">charge + power path</text>
+  <text class="s" x="212" y="232">TS cold cut-off</text>
+  <text class="s" x="212" y="247">5 V boost unused</text>
+  <text class="s" x="212" y="266">EN pad → GND</text>
+  <text class="s" x="212" y="281">(fallback: bq24074)</text>
+
+  <path class="w" d="M264 118 V156"/>
+  <text class="wl2" x="272" y="142">SOLAR IN (2-wire)</text>
+  <path class="w" d="M170 236 H196"/>
+  <text class="wl2" x="60" y="188">BAT</text>
+
+  <rect class="box off" x="30" y="330" width="140" height="56" rx="8"/>
+  <text class="t" x="42" y="354">NTC → carrier</text>
+  <text class="s" x="42" y="372">the second thermistor</text>
+
+  <rect class="box off" x="30" y="410" width="140" height="56" rx="8"/>
+  <text class="t" x="42" y="434">leak pads</text>
+  <text class="s" x="42" y="452">2 screws on hull wall</text>
+
+  <rect class="box off" x="30" y="484" width="140" height="52" rx="8"/>
+  <text class="t" x="42" y="507">DS18B20</text>
+  <text class="s" x="42" y="524">sea-temp probe (1-Wire)</text>
+
+  <!-- CARRIER zone -->
+  <rect class="zone" x="366" y="14" width="284" height="532"/>
+  <text class="zl" x="378" y="36">THE BOARD YOU DESIGN</text>
+
+  <rect class="box brd" x="380" y="52" width="256" height="484" rx="10"/>
+  <text class="t" x="396" y="80">meteo-carrier</text>
+  <text class="s" x="396" y="98">2-layer · ≤ 100 × 80 mm · 4× M3</text>
+
+  <text class="t" x="396" y="130" style="font-size:12.5px">charger port — 2 conductors</text>
+  <text class="s" x="396" y="146">BATT+ · GND  (size: see §5)</text>
+
+  <text class="t" x="396" y="176" style="font-size:12.5px">F1 polyfuse → MCP1700 LDO</text>
+  <text class="s" x="396" y="192">always-on 3V3, 1.6 µA Iq</text>
+  <text class="t" x="396" y="216" style="font-size:12.5px">JP1 / JP2 metering jumpers</text>
+
+  <text class="t" x="396" y="248" style="font-size:12.5px">2× MCU socket strips</text>
+  <text class="s" x="396" y="264">DevKit + FireBeetle, one fitted</text>
+
+  <text class="t" x="396" y="294" style="font-size:12.5px">2× TPS22918 load switch</text>
+  <text class="s" x="396" y="310">GPS 3V3 (IO25) · modem VBAT (IO26)</text>
+
+  <text class="t" x="396" y="340" style="font-size:12.5px">QW1 Qwiic — I²C0 always-on</text>
+  <text class="t" x="396" y="362" style="font-size:12.5px">QW2 Qwiic — I²C1 switched</text>
+  <text class="t" x="396" y="384" style="font-size:12.5px">SOCK_BARO header — I²C0</text>
+
+  <text class="t" x="396" y="414" style="font-size:12.5px">XH-5 RockBLOCK port</text>
+  <text class="s" x="396" y="430">VBAT · GND · RX · TX · On/Off</text>
+
+  <text class="t" x="396" y="458" style="font-size:12.5px">XH-3 sensor ports ×3</text>
+  <text class="s" x="396" y="474">DS18B20 · NTC · leak (keyed)</text>
+
+  <text class="t" x="396" y="502" style="font-size:12.5px">0805 passives (fab-placed)</text>
+  <text class="s" x="396" y="518">pull-downs, pull-up, dividers, caps</text>
+
+  <path class="w" d="M328 236 H376"/>
+  <path class="w" d="M170 358 H376" />
+  <path class="w" d="M170 438 H376"/>
+  <path class="w" d="M170 510 H376"/>
+
+  <!-- MODULES zone -->
+  <rect class="zone" x="672" y="14" width="214" height="532"/>
+  <text class="zl" x="684" y="36">PLUG-IN MODULES</text>
+
+  <rect class="box mod" x="688" y="52" width="182" height="70" rx="8"/>
+  <text class="t" x="700" y="76">ESP32 module</text>
+  <text class="s" x="700" y="94">FireBeetle 2 ESP32-E</text>
+  <text class="s" x="700" y="109">(or DevKit on the bench)</text>
+  <path class="w" d="M640 84 H684"/>
+
+  <rect class="box mod" x="688" y="146" width="182" height="86" rx="8"/>
+  <text class="t" x="700" y="170">I²C0 sensors</text>
+  <text class="s" x="700" y="188">BME280 (0x77)</text>
+  <text class="s" x="700" y="203">MAX17048 gauge (0x36)</text>
+  <text class="s" x="700" y="218">BMP581 baro (0x47)</text>
+  <path class="w" d="M640 186 H684"/>
+
+  <rect class="box mod" x="688" y="256" width="182" height="64" rx="8"/>
+  <text class="t" x="700" y="280">SAM-M8Q GPS</text>
+  <text class="s" x="700" y="298">I²C1, on the switched rail</text>
+  <path class="w" d="M640 288 H684"/>
+
+  <rect class="box mod" x="688" y="344" width="182" height="72" rx="8"/>
+  <text class="t" x="700" y="368">RockBLOCK 9603</text>
+  <text class="s" x="700" y="386">Iridium modem · UART 3.3 V</text>
+  <text class="s" x="700" y="401">VBAT pin 8 · 470 mA max</text>
+  <path class="w" d="M640 380 H684"/>
+</svg>
+<figcaption>Amber = off-board assemblies (exist already; connect by cable).
+Blue = the PCB being designed. Green = modules that plug into it. The five
+arrows into the board are its complete external interface: one charger cable,
+three sensor cables, and the module sockets/ports.</figcaption>
+</figure>
+<div class="legend">
+  <span class="l-off">off-board assembly</span>
+  <span class="l-board">the carrier PCB</span>
+  <span class="l-mod">plug-in module</span>
+</div>
+
+<h2><span class="num">4</span>What the board actually does</h2>
+<p>Functionally the carrier is four things:</p>
+<ol>
+  <li><strong>Makes the always-on 3.3&nbsp;V rail.</strong>
+      <code>BATT+</code> → F1 polyfuse (1.1&nbsp;A hold) → MCP1700-3302E LDO
+      (TO-92, 1.6&nbsp;µA quiescent — this exact part, its Iq <em>is</em> the
+      sleep budget) → JP1 jumper → 3V3 to the MCU sockets, QW1 and SOCK_BARO.</li>
+  <li><strong>Switches the two hungry rails, with a load switch each.</strong>
+      GPS: 3V3 → U2 TPS22918 → QW2, gated by IO25. Modem: <code>VBAT</code>
+      → U3 TPS22918 → JP2 → the RockBLOCK port, gated by IO26. <strong>The
+      modem rail is tapped ahead of F1</strong>, because a 1.1&nbsp;A polyfuse
+      carries real resistance and a few hundred mV at 500&nbsp;mA would eat the
+      margin against the modem's 3.0&nbsp;V minimum. Both gate lines carry
+      100&nbsp;kΩ pull-downs so neither rail can come up during boot, reset,
+      or with no MCU fitted.</li>
+  <li><strong>Routes the buses.</strong> I²C0 (IO21/22) to the always-on
+      sensors; I²C1 (IO18/19) to the GPS <em>only</em>; UART (IO16/17) to the
+      modem port; 1-Wire (IO4) to the DS18B20 port; two gated analog dividers
+      (NTC, leak) into input-only ADC pins.</li>
+  <li><strong>Seats the modules.</strong> Two machined-pin socket strips so
+      either a DFRobot FireBeetle 2 ESP32-E or an ELEGOO ESP32 DevKit drops in
+      (one populated at a time), plus a 2.54&nbsp;mm header for the BMP581
+      breakout and two Qwiic (JST-SH) connectors. <strong>The BME280 needs a fourth seat that is not yet decided</strong> — §10.</li>
+</ol>
+
+<h2><span class="num">5</span>Connectors — the board's entire edge</h2>
+<p>All wire ports are <strong>JST-XH, top-entry, through-hole</strong>. The
+connector sizes double as keying; the two 3-pin sensor ports are additionally
+keyed by a vacant centre pin.</p>
+<table>
+  <tr><th>Port</th><th>Type</th><th>Pin order (1→n)</th><th>Goes to</th></tr>
+  <tr><td>Charger</td><td>XH-<strong>5</strong>, three positions vacant</td><td><code>BATT+ · — · — · — · GND</code></td><td>bq25185 board (cable)</td></tr>
+  <tr><td>RockBLOCK</td><td>XH-<strong>5</strong></td><td><code>VBAT · GND · RX · TX · On/Off</code></td><td>modem (3.3 V LVTTL UART — direct, no shifter). <strong>The sleep pin is now wired</strong>: the owned units are v3.D, which takes ordinary 3.3 V logic</td></tr>
+  <tr><td>DS18B20</td><td>XH-3</td><td><code>DATA · GND · 3V3</code> — this order is deliberate keying, keep it</td><td>waterproof temp probe</td></tr>
+  <tr><td>NTC</td><td>XH-3, <strong>centre pin vacant</strong></td><td><code>IO13-node · — · IO34-node</code></td><td>10 kΩ NTC at battery pack</td></tr>
+  <tr><td>Leak</td><td>XH-3, <strong>centre pin vacant</strong></td><td><code>sense · — · GND</code></td><td>two pads on the hull wall</td></tr>
+  <tr><td>QW1 / QW2</td><td>JST-SH 4-pin (Qwiic), SMD</td><td>standard Qwiic</td><td>QW1 → MAX17048 fuel gauge only; QW2 → GPS. <strong>The BME280 is a header board, not Qwiic</strong> — see §10</td></tr>
+  <tr><td>JP1 / JP2</td><td>2-pin 2.54 header + shunt</td><td>in-line in 3V3 / in the switched modem rail</td><td>metering + interlock (below)</td></tr>
+</table>
+<div class="callout warn">
+<strong>Why the odd keying:</strong> connector sizes are the keying. On a plain
+2-pin NTC port a mis-plugged 2-pin cable would put ~6–7&nbsp;V on an ESP32 pin
+rated 3.6&nbsp;V absolute max. With the vacant centre, any offset-inserted
+smaller housing lands one contact on a dead pin — open circuit, nothing happens.
+The DS18B20 pin order makes every remaining sensor-harness cross-plug
+electrically passive. Please don't "clean this up".
+</div>
+<div class="callout note">
+<strong>The charger port is XH-5 with three dead pins — decided 2026-09-09:</strong>
+this argument used to rest on <em>the only 2-pin XH in the system being the solar
+cable</em>. The charger port dropped from five conductors to two in September, so a
+plain XH-2 would have let a solar cable fit a port that feeds F1, the LDO (6&nbsp;V
+absolute max) and the modem rail (5.4&nbsp;V max). It is now an <strong>XH-5 body with
+BATT+ on position 1, GND on position 5 and 2–4 vacant</strong>: a 2-position housing
+spans only adjacent positions, so it can never bridge them, and the charger harness
+becomes a 5-position body that cannot enter any 3-position sensor port.
+<strong>Positions 2–4 are keying, not spare capacity — do not route to them</strong>, and
+the harness is crimped with its two contacts at the <em>ends</em>, not side by side.
+</div>
+
+<h3>Every cross-plug, and what it does</h3>
+<p>The keying above is only as good as the table that checks it. Re-derived
+2026-09-09 for the port sizes as they stand after ADR&nbsp;0014; it
+<strong>supersedes the residual cross-plug matrix in the rev.&nbsp;3 order
+spec</strong>, which was computed when <code>J5</code> was a populated XH-5 and
+<code>J6</code> was XH-4. Both moved.</p>
+
+<div class="callout note">
+<strong>The whole table rests on one untested assumption:</strong> that a
+<em>smaller</em> JST-XH housing can be pushed into a <em>larger</em> XH shroud.
+Rev.&nbsp;3 assumes it for the 3-position ports &mdash; that is the entire argument
+for the vacant centre pin &mdash; but never checked it for the 4- and 5-position
+ports, where it argued only &ldquo;no same-size partner&rdquo;. If the assumption is
+false, every smaller&rarr;larger cell below becomes <span class="mono">CAN'T FIT</span>
+and both surviving hazards disappear. <strong>Two minutes with connectors already in
+the drawer, and nothing in the tree records the answer either way.</strong>
+</div>
+
+<p class="sev-legend">
+  <span class="k-none">&#10005; can&rsquo;t fit &mdash; bigger housing, smaller shroud</span>
+  <span class="k-open">&#9675; open &mdash; a contact lands on nothing</span>
+  <span class="k-pass">&#9670; passive &mdash; connects, nothing damaged</span>
+  <span class="k-dmg">&#9650; damage &mdash; a part is over its rating</span>
+</p>
+
+<div class="matrix-scroll">
+<table class="xmatrix">
+  <tr>
+    <th>Harness &darr; into port &rarr;</th>
+    <th>J5 charger<span class="sz">XH-5 &middot; live 1, 5</span></th>
+    <th>J6 modem<span class="sz">XH-5 &middot; all live</span></th>
+    <th>J7 NTC<span class="sz">XH-3 &middot; centre vacant</span></th>
+    <th>J8 DS18B20<span class="sz">XH-3 &middot; all live</span></th>
+    <th>J9 leak<span class="sz">XH-3 &middot; centre vacant</span></th>
+  </tr>
+  <tr><th scope="row">Solar<span class="sz">XH-2 &middot; ~6.7 V</span></th><td class="x-open"><span class="vd">&#9675; Open</span><span class="vw">1 and 5 never adjacent</span></td><td class="x-dmg"><span class="vd">&#9650; Damage</span><span class="vw">6.7 V on the modem rail, or IO16/IO17</span></td><td class="x-open"><span class="vd">&#9675; Open</span><span class="vw">one contact on the dead centre</span></td><td class="x-dmg"><span class="vd">&#9650; Damage</span><span class="vw">6.7 V on IO4 or the 3V3 rail</span></td><td class="x-open"><span class="vd">&#9675; Open</span><span class="vw">one contact on the dead centre</span></td></tr>
+  <tr><th scope="row">Charger<span class="sz">XH-5 &middot; 3.0&ndash;4.2 V</span></th><td class="x-self"><span class="vd">&mdash;</span><span class="vw">its own port</span></td><td class="x-pass"><span class="vd">&#9670; Passive</span><span class="vw">pack onto the modem rail, which normally carries it; GND onto IO14</span></td><td class="x-none"><span class="vd">&#10005; Can't fit</span><span class="vw">5-position body</span></td><td class="x-none"><span class="vd">&#10005; Can't fit</span><span class="vw">5-position body</span></td><td class="x-none"><span class="vd">&#10005; Can't fit</span><span class="vw">5-position body</span></td></tr>
+  <tr><th scope="row">Modem<span class="sz">XH-5 &middot; 5 wires</span></th><td class="x-pass"><span class="vd">&#9670; Passive</span><span class="vw">supply wire to BATT+, On/Off to GND, the rest on vacant pins</span></td><td class="x-self"><span class="vd">&mdash;</span><span class="vw">its own port</span></td><td class="x-none"><span class="vd">&#10005; Can't fit</span><span class="vw">5-position body</span></td><td class="x-none"><span class="vd">&#10005; Can't fit</span><span class="vw">5-position body</span></td><td class="x-none"><span class="vd">&#10005; Can't fit</span><span class="vw">5-position body</span></td></tr>
+  <tr><th scope="row">NTC<span class="sz">XH-3 &middot; contacts 1, 3</span></th><td class="x-open"><span class="vd">&#9675; Open</span><span class="vw">at most one live pin reached</span></td><td class="x-pass"><span class="vd">&#9670; Passive</span><span class="vw">a 10 k&Omega; thermistor bridging two pins; microamps</span></td><td class="x-self"><span class="vd">&mdash;</span><span class="vw">its own port</span></td><td class="x-pass"><span class="vd">&#9670; Passive</span><span class="vw">3V3 at both ends through R3 &mdash; no static current</span></td><td class="x-pass"><span class="vd">&#9670; Passive</span><span class="vw">a misread; both nets are gated dividers</span></td></tr>
+  <tr><th scope="row">DS18B20<span class="sz">XH-3 &middot; all three</span></th><td class="x-open"><span class="vd">&#9675; Open</span><span class="vw">no return path through the vacant pins</span></td><td class="x-pass"><span class="vd">&#9670; Passive</span><span class="vw">sensor rated to 5.5 V; the rail is 4.2 V</span></td><td class="x-pass"><span class="vd">&#9670; Passive</span><span class="vw">sensor ground on the vacant pin &mdash; unpowered</span></td><td class="x-self"><span class="vd">&mdash;</span><span class="vw">its own port</span></td><td class="x-pass"><span class="vd">&#9670; Passive</span><span class="vw">sensor ground on the vacant pin &mdash; unpowered</span></td></tr>
+  <tr><th scope="row">Leak<span class="sz">XH-3 &middot; contacts 1, 3</span></th><td class="x-open"><span class="vd">&#9675; Open</span><span class="vw">at most one live pin reached</span></td><td class="x-pass"><span class="vd">&#9670; Passive</span><span class="vw">two hull pads with no source behind them</span></td><td class="x-pass"><span class="vd">&#9670; Passive</span><span class="vw">a misread; both nets are gated dividers</span></td><td class="x-pass"><span class="vd">&#9670; Passive</span><span class="vw">~0 V across the pads &mdash; no electrolysis</span></td><td class="x-self"><span class="vd">&mdash;</span><span class="vw">its own port</span></td></tr>
+</table>
+</div>
+
+<div class="callout warn">
+<strong>Two hazards survive, and neither is about <code>J5</code>.</strong> Sizing the
+charger port closes every cross that involves it and stops the charger harness reaching
+any sensor port. What it does not touch is the solar line.
+<ul>
+  <li><strong>solar &rarr; J8</strong> &mdash; already recorded in rev.&nbsp;3. The
+  DS18B20 port must be fully populated, so it has no dead pin to absorb an offset.
+  ~6.7&nbsp;V reaches IO4 (3.6&nbsp;V max) or the 3V3 rail. Mitigated only by
+  colour-coded housings and by both ends of the solar line being committed.</li>
+  <li><strong>solar &rarr; J6 &mdash; new, and previously undocumented.</strong>
+  ADR&nbsp;0014 gave the modem port a fifth wire; the old matrix cleared the 4- and
+  5-position ports on the grounds that no <em>same-size</em> partner existed, and never
+  evaluated a smaller housing going in. ~6.7&nbsp;V reaches the modem rail
+  (5.4&nbsp;V max) or IO16/IO17 (3.6&nbsp;V max). <strong>No mitigation recorded.</strong></li>
+</ul>
+The solar line is not a carrier port &mdash; it runs combiner &rarr; charger, and only
+its free end can wander. <span class="mono">architecture-power-and-wiring.md</span> calls
+that end a JST-XH connector; the rev.&nbsp;3 spec says it is soldered. Those disagree,
+and which is true decides how easily either hazard can be reached at all.
+</div>
+
+<h2><span class="num">6</span>Net list (the contract)</h2>
+<table>
+  <tr><th>Net</th><th>From</th><th>To</th><th>Notes</th></tr>
+  <tr><td><code>VBAT</code></td><td>charger port pin 1</td><td>F1 <strong>and U3 VIN</strong></td><td>battery voltage, 3.0–4.2 V. The modem rail taps here, <em>before</em> F1 — see §4</td></tr>
+  <tr><td><code>VBAT_F</code></td><td>F1</td><td>MCP1700 VIN, C1 (1 µF)</td><td>fused battery rail</td></tr>
+  <tr><td><code>3V3_RAW</code></td><td>MCP1700 VOUT</td><td>C2 (1 µF), C3 (10 µF), JP1.1</td><td></td></tr>
+  <tr><td><code>3V3</code></td><td>JP1.2</td><td>both MCU sockets 3V3 · QW1 VCC · TPS22918 VIN</td><td><strong>the board rail</strong></td></tr>
+  <tr><td><code>3V3_GPS</code></td><td>TPS22918 VOUT</td><td>QW2 VCC</td><td>on ~minutes/day</td></tr>
+  <tr><td><code>GPS_EN</code></td><td>MCU IO25</td><td>TPS22918 ON + R1 100k→GND</td><td>rail off at boot / MCU absent</td></tr>
+  <tr><td><code>RB_EN</code></td><td>MCU IO26</td><td>U3 ON + R2 100k→GND</td><td>modem rail must not rise in reset</td></tr>
+  <tr><td><code>SDA0/SCL0</code></td><td>MCU IO21/IO22</td><td>QW1, SOCK_BARO, + the BME280 seat (§10)</td><td>always-on I²C: BME280 0x77, MAX17048 0x36, BMP581 0x47</td></tr>
+  <tr><td><code>SDA1/SCL1</code></td><td>MCU IO18/IO19</td><td>QW2 only</td><td>switched GPS bus — no series parts</td></tr>
+  <tr><td><code>OW_DATA</code></td><td>MCU IO4</td><td>DS18B20 port DATA + R3 4.7k→3V3</td><td>1-Wire</td></tr>
+  <tr><td><code>SENSE_EXC</code></td><td>MCU IO13</td><td>NTC port pin 1 · R5 100k</td><td>output; high only during reads</td></tr>
+  <tr><td><code>NTC_SENSE</code></td><td>MCU IO34</td><td>NTC port pin 3 / R4 10k→GND junction</td><td>input-only ADC1</td></tr>
+  <tr><td><code>LEAK_SENSE</code></td><td>MCU IO35</td><td>R5 / leak port pin 1 junction + C6 100 nF→GND</td><td>input-only ADC1; C6 fixes source impedance (τ = 10 ms)</td></tr>
+  <tr><td><code>VBAT_RB</code></td><td>U3 VOUT</td><td>JP2 pin 1</td><td>switched modem rail; on ~3–24 min/day</td></tr>
+  <tr><td><code>VBAT_RB_SW</code></td><td>JP2 pin 2</td><td>RockBLOCK port pin 1</td><td>to the modem's <strong>pin 8</strong>: 3.0–5.4 V straight from the pack. <strong>No bulk capacitor</strong> — the module's own supercapacitors buffer the transmit burst and must never be removed</td></tr>
+  <tr><td><code>RB_ONOFF</code></td><td>MCU IO14</td><td>RockBLOCK port pin 5</td><td>the modem's sleep input; v3.D takes ordinary 3.3 V logic, so the GPIO drives it directly</td></tr>
+  <tr><td><code>RB_RX / RB_TX</code></td><td>MCU IO17 / IO16</td><td>RockBLOCK port 3 / 4</td><td>ESP32 transmits on IO17</td></tr>
+  <tr><td><code>GND</code></td><td colspan="2">single net, back-layer pour</td><td>both charger-port grounds join it</td></tr>
+</table>
+<p>Spare MCU pins after this map: IO23 (bidirectional), IO36, IO39
+(input-only ADC1) — IO14 left the spare list when the modem's sleep pin was
+wired. Nothing uses ADC2 — that's deliberate (ADC2 dies when the radio is on).</p>
+
+<h2><span class="num">7</span>Bill of materials on the board</h2>
+<div class="two-col">
+<div>
+<h3>Fab-placed SMD (0805 unless noted)</h3>
+<ul>
+  <li>U2, <strong>U3</strong> — TPS22918DBVR, SOT-23-6 (<strong>two</strong>: GPS rail and modem rail)</li>
+  <li>QW1, QW2 — JST-SH 4-pin (SM04B-SRSS-TB)</li>
+  <li>R1, R2, R5 — 100 kΩ · R3 — 4.7 kΩ · R4 — 10 kΩ</li>
+  <li>C1 — 1 µF · C2 — 1 µF · C3 — 10 µF</li>
+  <li>C6 — 100 nF</li>
+</ul>
+</div>
+<div>
+<h3>Hand-soldered through-hole (co-build)</h3>
+<ul>
+  <li>U1 — MCP1700-3302E/TO, TO-92 (owned)</li>
+  <li>F1 — polyfuse, 1.1 A hold</li>
+  <li>JP1, JP2 — 2-pin headers + shunts</li>
+  <li>5× wire ports: the charger port (2 conductors, size per PROC-16),
+      XH-5 for the modem, 3× XH-3 for the sensors. <strong>The XH-4 this
+      brief used to specify is gone</strong> — check any header order placed
+      against the older list</li>
+  <li>2× MCU socket strips + SOCK_BARO — machined-pin female, 2.54 mm</li>
+</ul>
+</div>
+</div>
+
+<h2><span class="num">8</span>Layout rules that actually matter</h2>
+<ul>
+  <li><strong>Two I²C buses is a hard requirement, not tidiness.</strong> If
+      the GPS shared the always-on bus, the bus pull-ups would backfeed
+      ~2&nbsp;mA through its ESD diodes whenever its rail is off — tripling the
+      probe's total consumption. I²C1 must reach QW2 and nothing else.</li>
+  <li><strong>The modem path carries ~500&nbsp;mA, not 1.3&nbsp;A.</strong>
+      <code>VBAT</code> → U3 → JP2 → RockBLOCK port. The 1.3&nbsp;A figure in
+      circulation is the bare 9603N module's burst; the RockBLOCK board hides it
+      behind its own supercapacitors and the supply never sees more than
+      470&nbsp;mA. Size the run for that and keep it short — <strong>the whole
+      point of tapping ahead of F1 is voltage margin</strong>, and trace
+      resistance spends the same margin the polyfuse would have.</li>
+  <li><strong>Leakage is the enemy everywhere else.</strong> No LEDs, no
+      "power" indicators, no dividers hanging on a rail. Anything that draws
+      standing current on 3V3 or VBAT blows the µA budget.</li>
+  <li><strong>R1/R2 pull-downs must be genuinely on the gate nets</strong> so
+      GPS and modem rails stay down with no MCU inserted (bring-up tests this
+      explicitly).</li>
+  <li><strong>All SMD on the top side</strong> — JLCPCB economic assembly
+      constraint. Through-hole can go anywhere sensible.</li>
+  <li><strong>JP1 and JP2 are measurement points, not debug leftovers.</strong>
+      Shunt fitted = normal. Shunt off = rail broken (JP1 doubles as the
+      "never battery + USB together" interlock). Meter across the pins =
+      in-line current measurement. Keep them reachable.</li>
+  <li><strong>Generous pads, silk everything.</strong> This is a
+      parent-and-child co-build; the through-hole side gets hand-soldered by
+      beginners. Label every port with name <em>and</em> pin-1 marker.</li>
+</ul>
+
+<h2><span class="num">9</span>Mechanical + fab</h2>
+<ul>
+  <li>Outline <strong>≤ 100 × 80 mm</strong> (verified to fit the hull with
+      ~26 mm to spare). 2-layer, 1.6 mm FR-4.</li>
+  <li><strong>4 × M3 mounting holes</strong> — pattern must be agreed with the
+      enclosure side before ordering (an outline + holes DXF is one of your
+      deliverables; the printed mounting platform is designed against it).</li>
+  <li>The charger board mounts <em>next to</em> the carrier on its own
+      standoffs — leave nothing on the carrier for it except the XH-5 port.</li>
+  <li>Fab plan: JLCPCB, 5 boards, economic PCBA for the SMD side, parts from
+      the LCSC catalog (TPS22918DBVR and SM04B-SRSS-TB are stocked; verify at
+      order time). Deliverables: the editable source project in your EDA tool's
+      native format, Gerbers, BOM CSV, CPL, DXF.</li>
+</ul>
+
+<h2><span class="num">10</span>What is still open (so it doesn't surprise you)</h2>
+<ul class="checklist">
+  <li><strong>How the BME280 attaches (PROC-17)</strong> — found 2026-09-09 and
+      it touches your layout. The owned board is SparkFun <strong>SEN-13905,
+      with 0.1&nbsp;in headers</strong> — not the Qwiic SEN-15440 formerly
+      recorded here, a different board. Nothing electrical moves — same sensor,
+      same 0x77, same I²C0 — but it <strong>cannot plug into QW1</strong>, which
+      now carries the MAX17048 alone. Either a Qwiic-to-header cable off that
+      chain (no board change, but it gives up the keying Qwiic was chosen for),
+      or a <code>SOCK_BME</code> 4-pin female header alongside
+      <code>SOCK_BARO</code> — the same treatment the BMP581 already gets, and
+      nearly free while the board is unfabricated. <strong>You will get a
+      decision, not a guess</strong>; assume the socket if you need to place
+      something now.</li>
+  <li><strong>Module socket dimensions.</strong> We measure the physical
+      DevKit (30 vs 38 pin, row spacing) and FireBeetle (header spacing,
+      2.0 mm mounting holes) with calipers and send you the numbers — don't
+      trust downloaded drawings for these two footprints.</li>
+  <li><strong>Mounting-hole pattern</strong> — settled together with the
+      enclosure side (see §9).</li>
+  <li><strong>Charger port size (PROC-16)</strong> — the one open item that
+      touches your layout. Two conductors is settled; the connector family and
+      size are not, because dropping to two would collide with the solar
+      cable's keying. See the second warning in §5; you will get a decision,
+      not a guess.</li>
+  <li><s>Charger identity</s> — <strong>settled 8 September: bq25185 (#6106)</strong>.
+      Irrelevant to your layout either way, since the charger stays a
+      cable-connected port.</li>
+  <li><strong>Order gate:</strong> before Gerbers go out, the same netlist is
+      being proven on a hand-wired protoboard. Any change it finds
+      back-propagates to the net table above — you'll get a diff, not a
+      surprise.</li>
+</ul>
+
+<h2><span class="num">11</span>Bring-up sequence the design should support</h2>
+<p>This is how every board gets verified — worth knowing while placing parts,
+because it defines what must be probeable:</p>
+<ol>
+  <li>Continuity: 3V3↔GND, VBAT↔GND not shorted.</li>
+  <li>JP1/JP2 out, battery on charger port → F1 passes, 3.30 V ± 0.1 at JP1
+      pin 1. Fit JP1.</li>
+  <li>No MCU: <code>GPS_EN</code> and <code>RB_EN</code> read 0 V
+      (pull-downs working).</li>
+  <li>MCU in → 3V3 at socket → flash.</li>
+  <li>I²C0 scan finds 0x77 / 0x36 / 0x47; assert IO25 → I²C1 finds the GPS;
+      de-assert → rail collapses.</li>
+  <li>DS18B20 answers on 1-Wire; NTC reads mid-scale; damp finger across leak
+      pads drops IO35.</li>
+  <li>RockBLOCK last, meter in series at JP2 (allow ~10 s after the rail comes
+      up — the module spends that charging its supercapacitors before the
+      Iridium side will do anything).</li>
+</ol>
+
+<p class="meta" style="border-bottom:none; border-top:2px solid var(--ink); margin-top:36px; padding-top:12px;">
+Questions → back to me; the full specs (with every rationale) live in the
+project repo under <span class="mono">docs/superpowers/specs/</span>. This page
+prints cleanly — File → Print → Save as PDF.</p>
+
+</div>
+</body>
+</html>
