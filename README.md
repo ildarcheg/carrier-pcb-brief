@@ -44,3 +44,10 @@ The board is **not fabricated**. Two decisions were closed on 2026-09-09 — the
 charger port's size and where the fuel gauge sits in the pack link — and the
 page marks what is still open, including that the cross-plug matrix rests on one
 untested assumption it names.
+
+## Licence
+
+[CC BY 4.0](LICENSE). Reuse it, adapt it, publish it, with credit to
+**SouthPing** (<https://southping.org/>) and a link back. Source code in the
+project is Apache-2.0. Manufacturers' datasheets and product photographs
+remain theirs and are not covered by this grant.
